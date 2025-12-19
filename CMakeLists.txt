@@ -4,8 +4,9 @@ project(toke)
 
 find_package(OpenMP REQUIRED COMPONENTS CXX)
 
-option(TOKE_TESTS "Whether to enable building the unit tests."     OFF)
-option(TOKE_TOOL  "Whether to build the tool for creating vocabs." OFF)
+option(TOKE_TESTS  "Whether to enable building the unit tests."     OFF)
+option(TOKE_TOOL   "Whether to build the tool for creating vocabs." OFF)
+option(TOKE_PYTHON "Whether to build the Python bindings."           ON)
 
 #==============#
 # Main library #
@@ -20,6 +21,8 @@ add_library(toke
   src/encoder.c
   src/error.c
   src/filter.c
+  src/vocab.h
+  src/vocab.c
 )
 
 target_include_directories(toke
@@ -46,6 +49,31 @@ target_include_directories(toke_cxx
 target_link_libraries(toke_cxx PUBLIC toke::toke)
 
 add_library(toke::toke_cxx ALIAS toke_cxx)
+
+#================#
+# Python Library #
+#================#
+
+if(TOKE_PYTHON)
+
+  include(pybind11.cmake)
+
+  pybind11_add_module(pytoke
+    src/python.cpp
+  )
+
+  target_link_libraries(pytoke
+    PUBLIC
+      toke::toke
+  )
+
+  install(TARGETS pytoke
+    RUNTIME DESTINATION .
+    ARCHIVE DESTINATION .
+    LIBRARY DESTINATION .
+  )
+
+endif()
 
 #=========================#
 # Tool for building vocab #

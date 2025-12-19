@@ -1,12 +1,15 @@
 #include <toke/decoder.h>
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "vocab.h"
+
 struct vocab_entry
 {
-  char* def;
+  uint8_t* def;
 
   size_t size;
 };
@@ -48,33 +51,42 @@ toke_decoder_delete(toke_decoder_z* self)
 static toke_error_z
 add_token_def(toke_decoder_z* self, const char* word, const size_t word_len)
 {
+  if (word[0] == '#') {
+    /* this is a directive, not a token definition */
+    return TOKE_ERROR_NONE;
+  }
+
+  size_t pp_word_len = 0;
+
+  uint8_t* pp_word = toke_process_token_def(word, word_len, &pp_word_len);
+  if (!pp_word) {
+    return TOKE_ERROR_MEMORY_ALLOCATION;
+  }
+
   const size_t new_size = (self->vocab_size + 1) * sizeof(struct vocab_entry);
 
   void* ptr = realloc(self->vocab, new_size);
   if (!ptr) {
+    free(pp_word);
     return TOKE_ERROR_MEMORY_ALLOCATION;
   }
 
   self->vocab = (struct vocab_entry*)ptr;
 
   struct vocab_entry* entry = &self->vocab[self->vocab_size];
-  entry->def = malloc(word_len + 1);
+  entry->def = malloc(pp_word_len + 1);
   if (!entry->def) {
+    free(pp_word);
     return TOKE_ERROR_MEMORY_ALLOCATION;
   }
 
-  if ((word_len == 2) && (word[0] == '\\') && (word[1] == 'n')) {
-    entry->def[0] = '\n';
-    entry->def[1] = 0;
-    entry->def[2] = 0;
-    entry->size = 1;
-  } else {
-    memcpy(entry->def, word, word_len);
-    entry->def[word_len] = 0;
-    entry->size = word_len;
-  }
+  memcpy(entry->def, pp_word, pp_word_len);
+  entry->def[pp_word_len] = 0;
+  entry->size = pp_word_len;
 
   self->vocab_size++;
+
+  free(pp_word);
 
   return TOKE_ERROR_NONE;
 }
@@ -163,7 +175,7 @@ toke_decode(toke_decoder_z* self, const uint16_t* tokens, const size_t length, s
   size_t out_length = 0;
 
   for (size_t i = 0; i < length; i++) {
-    const uint8_t token = tokens[i];
+    const uint16_t token = tokens[i];
     if (token >= self->vocab_size) {
       // for \x7f
       out_length++;
@@ -180,7 +192,7 @@ toke_decode(toke_decoder_z* self, const uint16_t* tokens, const size_t length, s
   size_t offset = 0;
 
   for (size_t i = 0; i < length; i++) {
-    const uint8_t token = tokens[i];
+    const uint16_t token = tokens[i];
     if (token >= self->vocab_size) {
       result[offset] = '\x7f';
       offset++;

@@ -1,0 +1,31 @@
+[build-system]
+requires = [
+  'scikit-build-core>=0.3.3',
+]
+build-backend = 'scikit_build_core.build'
+
+[project]
+name = 'toke'
+version = '1.0.0'
+description = 'A tokenization library for language models.'
+readme = 'README.md'
+authors = [
+  { name = 'Dylan Shaw', email = 'dylan.shaw@tuta.com' }
+]
+requires-python = '>=3.7'
+classifiers = [
+  'Development Status :: 4 - Beta',
+  'License :: OSI Approved :: Apache Software License',
+  'Programming Language :: Python :: 3 :: Only',
+  'Programming Language :: Python :: 3.7',
+  'Programming Language :: Python :: 3.8',
+  'Programming Language :: Python :: 3.9',
+  'Programming Language :: Python :: 3.10',
+  'Programming Language :: Python :: 3.11',
+  'Programming Language :: Python :: 3.12',
+]
+
+[project.urls]
+Homepage = 'https://github.com/dylan-shaw/toke'
+Issues = 'https://github.com/dylan-shaw/toke/issues'
+

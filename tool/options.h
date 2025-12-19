@@ -11,7 +11,7 @@ struct Options final
 
   std::string filterConfig;
 
-  int numTokens{ 16384 };
+  int numTokens{ 1024 };
 
   bool preload{ true };
 

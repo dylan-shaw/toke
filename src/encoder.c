@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "vocab.h"
+
 #define INVALID_TOKEN_ID 65535
 
 /**
@@ -136,69 +138,6 @@ line_length(const char* s, const size_t size, const size_t offset)
   return size - offset;
 }
 
-static uint8_t
-hex_to_value(const char value)
-{
-  if ((value >= 'a') && (value <= 'f')) {
-    return 10 + (value - 'a');
-  }
-
-  if ((value >= '0') && (value <= '9')) {
-    return value - '0';
-  }
-
-  return 0;
-}
-
-static uint8_t*
-process_escapes(const char* word, const size_t length, size_t* out_size)
-{
-  uint8_t* result = malloc(length + 1);
-  if (!result) {
-    return NULL;
-  }
-
-  size_t src_offset = 0;
-  size_t dst_offset = 0;
-
-  while (src_offset < length) {
-
-    if (word[src_offset] != '\\') {
-      result[dst_offset] = *(const uint8_t*)(word + src_offset);
-      dst_offset++;
-      src_offset++;
-      continue;
-    }
-
-    src_offset++;
-
-    uint8_t value = 0;
-
-    const size_t hex_start = src_offset;
-
-    while (src_offset < length) {
-
-      value <<= 4;
-
-      value |= hex_to_value(word[src_offset]);
-
-      src_offset++;
-
-      if ((src_offset - hex_start) == 2) {
-        break;
-      }
-    }
-
-    result[dst_offset] = value;
-
-    dst_offset++;
-  }
-
-  *out_size = dst_offset;
-
-  return result;
-}
-
 static toke_error_z
 add_token_def(toke_encoder_z* self, const unsigned char* word, const size_t length, const uint32_t token_id)
 {
@@ -306,7 +245,7 @@ toke_encoder_parse_vocab(toke_encoder_z* self, const char* vocab, const size_t l
 
     size_t def_size = 0;
 
-    uint8_t* def = process_escapes(word, word_size, &def_size);
+    uint8_t* def = toke_process_token_def(word, word_size, &def_size);
     if (!def) {
       return TOKE_ERROR_MEMORY_ALLOCATION;
     }

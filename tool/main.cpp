@@ -94,5 +94,8 @@ main(const int argc, char** argv) -> int
     std::cout << std::endl;
   }
 
+  std::ofstream file("tokenizer.txt");
+  file << vocab.toString();
+
   return EXIT_SUCCESS;
 }
