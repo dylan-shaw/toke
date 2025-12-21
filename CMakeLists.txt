@@ -6,49 +6,68 @@ find_package(OpenMP REQUIRED COMPONENTS CXX)
 
 option(TOKE_TESTS  "Whether to enable building the unit tests."     OFF)
 option(TOKE_TOOL   "Whether to build the tool for creating vocabs." OFF)
+option(TOKE_TRAIN  "Whether to build the training library."          ON)
 option(TOKE_PYTHON "Whether to build the Python bindings."           ON)
 
 #==============#
 # Main library #
 #==============#
 
-add_library(toke
+add_library(toke_core
   include/toke/decoder.h
   include/toke/encoder.h
   include/toke/error.h
   include/toke/filter.h
+  include/toke/model.h
   src/decoder.c
   src/encoder.c
   src/error.c
   src/filter.c
+  src/model.c
   src/vocab.h
   src/vocab.c
 )
 
-target_include_directories(toke
+target_include_directories(toke_core
   PUBLIC
     include
 )
 
-add_library(toke::toke ALIAS toke)
+add_library(toke::core ALIAS toke_core)
 
-#=============#
-# C++ library #
-#=============#
+#==================#
+# Training Library #
+#==================#
 
-add_library(toke_cxx
-  include/toke/cxx_api.hpp
-  src/cxx_api.cpp
-)
+if(TOKE_TRAIN OR TOKE_PYTHON)
 
-target_include_directories(toke_cxx
-  PUBLIC
-    include
-)
+  set(sources
+    include/toke/train/dataset.h
+    src/train/dataset.c
+    src/train/memmap.h
+  )
 
-target_link_libraries(toke_cxx PUBLIC toke::toke)
+  if(UNIX)
+    list(APPEND sources src/train/memmap_unix.c)
+  else()
+    message(FATAL_ERROR "platform not supported")
+  endif()
 
-add_library(toke::toke_cxx ALIAS toke_cxx)
+  add_library(toke_train ${sources})
+
+  target_include_directories(toke_train
+    PUBLIC
+      include
+  )
+
+  target_link_libraries(toke_train
+    PUBLIC
+      toke::core
+  )
+
+  add_library(toke::train ALIAS toke_train)
+
+endif()
 
 #================#
 # Python Library #
@@ -58,52 +77,25 @@ if(TOKE_PYTHON)
 
   include(pybind11.cmake)
 
-  pybind11_add_module(pytoke
-    src/python.cpp
+  pybind11_add_module(toke
+    src/python/core.cpp
+    src/python/train.h
+    src/python/train.cpp
+    src/python/exceptions.h
+    src/python/exceptions.cpp
   )
 
-  target_link_libraries(pytoke
+  target_link_libraries(toke
     PUBLIC
-      toke::toke
+      toke::core
+      toke::train
   )
 
-  install(TARGETS pytoke
+  install(TARGETS toke
     RUNTIME DESTINATION .
     ARCHIVE DESTINATION .
     LIBRARY DESTINATION .
   )
-
-endif()
-
-#=========================#
-# Tool for building vocab #
-#=========================#
-
-if(TOKE_TOOL)
-
-  add_executable(toker
-    tool/main.cpp
-    tool/options.h
-    tool/options.cpp
-    tool/file_set.h
-    tool/file_set.cpp
-    tool/file_visitor.h
-    tool/initializer.h
-    tool/initializer.cpp
-    tool/pair_counter.h
-    tool/pair_counter.cpp
-    tool/vocab.h
-    tool/vocab.cpp
-    tool/utf8.h
-  )
-
-  target_link_libraries(toker
-        PRIVATE
-        toke::toke_cxx
-        OpenMP::OpenMP_CXX
-  )
-
-  target_compile_features(toker PRIVATE cxx_std_20)
 
 endif()
 
@@ -123,7 +115,7 @@ if (TOKE_TESTS)
 
     target_link_libraries(toke_tests
             PRIVATE
-            toke::toke_cxx
+            toke::core
             GTest::gtest
             GTest::gtest_main
     )

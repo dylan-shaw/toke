@@ -4,28 +4,27 @@
 
 #include <toke/decoder.h>
 #include <toke/encoder.h>
+#include <toke/model.h>
+
+#include "exceptions.h"
+#include "train.h"
+
+#include <string>
 
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 
-namespace {
-
 namespace py = pybind11;
+
+namespace toke {
+
+namespace {
 
 void
 throw_out_of_memory()
 {
   throw std::runtime_error("out of memory");
-}
-
-void
-check_error(const toke_error_z err)
-{
-  if (err == TOKE_ERROR_NONE) {
-    return;
-  }
-
-  throw std::runtime_error(toke_strerror(err));
 }
 
 class Encoder final
@@ -44,13 +43,13 @@ public:
   void load_vocab(const std::string& filename)
   {
     const auto err = toke_encoder_load_vocab(m_self, filename.c_str());
-    check_error(err);
+    throw_if_error(err);
   }
 
   void parse_vocab(const std::string& vocab)
   {
     const auto err = toke_encoder_parse_vocab(m_self, vocab.data(), vocab.size());
-    check_error(err);
+    throw_if_error(err);
   }
 
   [[nodiscard]] auto encode(const std::string& txt) const
@@ -94,13 +93,13 @@ public:
   void load_vocab(const std::string& filename)
   {
     const auto err = toke_decoder_load_vocab(m_self, filename.c_str());
-    check_error(err);
+    throw_if_error(err);
   }
 
   void parse_vocab(const std::string& vocab)
   {
     const auto err = toke_decoder_parse_vocab(m_self, vocab.data(), vocab.size());
-    check_error(err);
+    throw_if_error(err);
   }
 
   [[nodiscard]] auto decode(const py::array_t<std::uint16_t, py::array::forcecast | py::array::c_style>& tokens) const
@@ -124,19 +123,63 @@ private:
   toke_decoder_z* m_self{};
 };
 
+class Model final
+{
+public:
+  Model()
+    : m_self(toke_model_new())
+  {
+    if (!m_self) {
+      throw_out_of_memory();
+    }
+  }
+
+  ~Model() { toke_model_delete(m_self); }
+
+  void add(const std::string& data)
+  {
+    const auto err = toke_model_add_token(m_self, reinterpret_cast<const uint8_t*>(data.data()), data.size());
+    throw_if_error(err);
+  }
+
+  [[nodiscard]] auto at(std::size_t index) const -> std::string
+  {
+    const uint8_t* data = toke_model_get_def(m_self, index);
+    const std::size_t size = toke_model_get_size(m_self, index);
+    return std::string(reinterpret_cast<const char*>(data), size);
+  }
+
+  [[nodiscard]] auto size() const -> size_t { return toke_model_size(m_self); }
+
+private:
+  toke_model_z* m_self{};
+};
+
 } // namespace
 
-PYBIND11_MODULE(pytoke, m)
-{
-  py::class_<Encoder>(m, "Encoder")
-    .def(py::init<>())
-    .def("load_vocab", &Encoder::load_vocab, py::arg("filename"))
-    .def("parse_vocab", &Encoder::parse_vocab, py::arg("vocab"))
-    .def("encode", &Encoder::encode, py::arg("text"));
+} // namespace toke
 
-  py::class_<Decoder>(m, "Decoder")
+PYBIND11_MODULE(toke, m)
+{
+  py::class_<toke::Encoder>(m, "Encoder")
     .def(py::init<>())
-    .def("load_vocab", &Decoder::load_vocab, py::arg("filename"))
-    .def("parse_vocab", &Decoder::parse_vocab, py::arg("vocab"))
-    .def("decode", &Decoder::decode, py::arg("tokens"));
+    .def("load_vocab", &toke::Encoder::load_vocab, py::arg("filename"))
+    .def("parse_vocab", &toke::Encoder::parse_vocab, py::arg("vocab"))
+    .def("encode", &toke::Encoder::encode, py::arg("text"));
+
+  py::class_<toke::Decoder>(m, "Decoder")
+    .def(py::init<>())
+    .def("load_vocab", &toke::Decoder::load_vocab, py::arg("filename"))
+    .def("parse_vocab", &toke::Decoder::parse_vocab, py::arg("vocab"))
+    .def("decode", &toke::Decoder::decode, py::arg("tokens"));
+
+  py::class_<toke::Model>(m, "Model")
+    .def(py::init<>())
+    .def("__len__", &toke::Model::size)
+    .def("__getitem__", &toke::Model::at, py::arg("index"))
+    .def("add", &toke::Model::add, py::arg("data"))
+    //
+    ;
+
+  toke::def_train_model(m);
 }
