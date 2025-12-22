@@ -142,6 +142,12 @@ public:
     throw_if_error(err);
   }
 
+  void add_unicode_block(const toke_unicode_block_z block)
+  {
+    const auto err = toke_model_add_unicode_block(m_self, block);
+    throw_if_error(err);
+  }
+
   [[nodiscard]] auto at(std::size_t index) const -> std::string
   {
     const uint8_t* data = toke_model_get_def(m_self, index);
@@ -173,13 +179,17 @@ PYBIND11_MODULE(toke, m)
     .def("parse_vocab", &toke::Decoder::parse_vocab, py::arg("vocab"))
     .def("decode", &toke::Decoder::decode, py::arg("tokens"));
 
+  py::enum_<toke_unicode_block_z>(m, "UnicodeBlock")
+    .value("BASIC_LATIN", TOKE_UNICODE_BLOCK_BASIC_LATIN)
+    .value("GENERAL_PUNCTUATION", TOKE_UNICODE_BLOCK_GENERAL_PUNCTUATION);
+
   py::class_<toke::Model>(m, "Model")
     .def(py::init<>())
     .def("__len__", &toke::Model::size)
     .def("__getitem__", &toke::Model::at, py::arg("index"))
     .def("add", &toke::Model::add, py::arg("data"))
-    //
-    ;
+    .def("add_unicode_block", &toke::Model::add_unicode_block, py::arg("block"));
+  ;
 
   toke::def_train_model(m);
 }

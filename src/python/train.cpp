@@ -27,7 +27,7 @@ public:
   {
     const auto err = toke_dataset_open(m_self, filename);
     throw_if_error(err);
-    toke_dataset_walk(m_self, nullptr, nullptr, 1);
+    toke_dataset_walk(m_self, 1, nullptr, nullptr);
   }
 
 private:

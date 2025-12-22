@@ -17,12 +17,12 @@ add_library(toke_core
   include/toke/decoder.h
   include/toke/encoder.h
   include/toke/error.h
-  include/toke/filter.h
+  include/toke/normalizer.h
   include/toke/model.h
   src/decoder.c
   src/encoder.c
   src/error.c
-  src/filter.c
+  src/normalizer.c
   src/model.c
   src/vocab.h
   src/vocab.c

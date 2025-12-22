@@ -12,6 +12,8 @@
 
 #define BLOCK_SIZE 512
 
+#define MAX_UNICODE_CODEPOINTS 0x10FFFF
+
 struct toke_dataset
 {
   toke_memmap_z* file;
@@ -58,28 +60,6 @@ toke_dataset_open(toke_dataset_z* self, const char* filename)
   return TOKE_ERROR_NONE;
 }
 
-struct tarinfo
-{
-  char name[100];
-  char mode[8];
-  char uid[8];
-  char gid[8];
-  char size[12];
-  char mtime[12];
-  char chksum[8];
-  char typeflag;
-  char linkname[100];
-  char magic[6];
-  char version[2];
-  char uname[32];
-  char gname[32];
-  char devmajor[8];
-  char devminor[8];
-  char prefix[155];
-};
-
-typedef struct tarinfo tarinfo_z;
-
 static size_t
 parse_size(const char* octets)
 {
@@ -122,12 +102,12 @@ run_jobs(const job_z* jobs, const size_t num_jobs, void* walker_data, toke_datas
 
     const job_z* job = jobs + i;
 
-    walker(walker_data, job->text, job->text_size, job->file_index);
+    walker(walker_data, job->text, job->text_size, job->file_index, /*thread_index=*/i);
   }
 }
 
 toke_error_z
-toke_dataset_walk(const toke_dataset_z* self, void* walker_data, toke_dataset_walker walker, size_t max_threads)
+toke_dataset_walk(const toke_dataset_z* self, const size_t max_threads, void* walker_data, toke_dataset_walker walker)
 {
   if (!self->file) {
     return TOKE_ERROR_FILE_NOT_FOUND;
@@ -155,7 +135,7 @@ toke_dataset_walk(const toke_dataset_z* self, void* walker_data, toke_dataset_wa
   while (offset < file_size) {
 
     const size_t remaining = file_size - offset;
-    if (remaining < sizeof(tarinfo_z)) {
+    if (remaining < BLOCK_SIZE) {
       break;
     }
 
@@ -175,14 +155,23 @@ toke_dataset_walk(const toke_dataset_z* self, void* walker_data, toke_dataset_wa
 
     const size_t num_blocks = (size + (BLOCK_SIZE - 1)) / BLOCK_SIZE;
 
-    job_z* next_job = &jobs[num_jobs];
-    next_job->file_index = file_index;
-    next_job->text = ptr + offset + BLOCK_SIZE;
-    next_job->text_size = size;
-    num_jobs++;
-    if (num_jobs == max_threads) {
-      run_jobs(jobs, num_jobs, walker_data, walker);
-      num_jobs = 0;
+    const uint8_t type = header[156];
+
+    if ((type == 0) || (type == '0')) {
+
+      // this is a regular file, add it to the queue
+
+      job_z* next_job = &jobs[num_jobs];
+      next_job->file_index = file_index;
+      next_job->text = ptr + offset + BLOCK_SIZE;
+      next_job->text_size = size;
+
+      num_jobs++;
+
+      if (num_jobs == max_threads) {
+        run_jobs(jobs, num_jobs, walker_data, walker);
+        num_jobs = 0;
+      }
     }
 
     offset += /* header_block + file_data_blocks */ (1 + num_blocks) * BLOCK_SIZE;

@@ -1,4 +1,4 @@
-#include <toke/filter.h>
+#include <toke/normalizer.h>
 
 #include <toke/error.h>
 
@@ -28,15 +28,15 @@ default_config()
   return cfg;
 }
 
-struct toke_filter
+struct toke_normalizer
 {
   struct config config;
 };
 
-toke_filter_z*
-toke_filter_new()
+toke_normalizer_z*
+toke_normalizer_new()
 {
-  toke_filter_z* self = malloc(sizeof(toke_filter_z));
+  toke_normalizer_z* self = malloc(sizeof(toke_normalizer_z));
   if (!self) {
     return NULL;
   }
@@ -47,7 +47,7 @@ toke_filter_new()
 }
 
 void
-toke_filter_delete(toke_filter_z* self)
+toke_normalizer_delete(toke_normalizer_z* self)
 {
   free(self);
 }
@@ -64,7 +64,7 @@ find_char(const char* config, const size_t length, const size_t offset, const ch
 }
 
 toke_error_z
-toke_filter_parse_config(toke_filter_z* self, const char* config, const size_t length)
+toke_normalizer_parse_config(toke_normalizer_z* self, const char* config, const size_t length)
 {
   self->config = default_config();
 
@@ -177,7 +177,7 @@ utf8_length(const char c)
 }
 
 char*
-toke_filter(toke_filter_z* filter, const char* input, const size_t length, size_t* out_length_ptr)
+toke_normalize(toke_normalizer_z* normalizer, const char* input, const size_t length, size_t* out_length_ptr)
 {
   char* result = malloc(length + 1);
   if (!result) {
@@ -187,11 +187,11 @@ toke_filter(toke_filter_z* filter, const char* input, const size_t length, size_
   size_t src_offset = 0;
   size_t dst_offset = 0;
 
-  const uint8_t normalize_newlines = filter->config.flags & NORMALIZE_NEWLINES;
-  const uint8_t normalize_tabs = filter->config.flags & NORMALIZE_TABS;
-  const uint8_t restricted_ascii = filter->config.flags & RESTRICTED_ASCII;
-  const uint8_t lowercase = filter->config.flags & LOWERCASE;
-  const uint8_t unicode_subs = filter->config.flags & UNICODE_SUBSTITUTES;
+  const uint8_t normalize_newlines = normalizer->config.flags & NORMALIZE_NEWLINES;
+  const uint8_t normalize_tabs = normalizer->config.flags & NORMALIZE_TABS;
+  const uint8_t restricted_ascii = normalizer->config.flags & RESTRICTED_ASCII;
+  const uint8_t lowercase = normalizer->config.flags & LOWERCASE;
+  const uint8_t unicode_subs = normalizer->config.flags & UNICODE_SUBSTITUTES;
 
   while (src_offset < length) {
 

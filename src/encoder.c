@@ -1,6 +1,6 @@
 #include <toke/encoder.h>
 
-#include <toke/filter.h>
+#include <toke/normalizer.h>
 
 #include <limits.h>
 #include <stdint.h>
@@ -45,9 +45,9 @@ struct toke_encoder
   uint32_t unknown_token_id;
 
   /**
-   * @brief An optional text filter.
+   * @brief An optional text normalizer.
    * */
-  toke_filter_z* filter;
+  toke_normalizer_z* normalizer;
 };
 
 toke_encoder_z*
@@ -59,7 +59,7 @@ toke_encoder_new()
   }
 
   self->unknown_token_id = 0;
-  self->filter = NULL;
+  self->normalizer = NULL;
 
   for (size_t i = 0; i < 256; i++) {
     self->root.nodes[i] = NULL;
@@ -77,8 +77,8 @@ toke_encoder_delete(toke_encoder_z* self)
 
     free_trie(&self->root);
 
-    if (self->filter) {
-      toke_filter_delete(self->filter);
+    if (self->normalizer) {
+      toke_normalizer_delete(self->normalizer);
     }
   }
 
@@ -208,11 +208,11 @@ parse_directive(toke_encoder_z* self, const char* vocab, const size_t length, co
 
   if (MATCH_DIRECTIVE("version")) {
   } else if (MATCH_DIRECTIVE("filter")) {
-    if (self->filter) {
-      toke_filter_delete(self->filter);
+    if (self->normalizer) {
+      toke_normalizer_delete(self->normalizer);
     }
-    self->filter = toke_filter_new();
-    return toke_filter_parse_config(self->filter, value, value_len);
+    self->normalizer = toke_normalizer_new();
+    return toke_normalizer_parse_config(self->normalizer, value, value_len);
   } else {
     return TOKE_ERROR_VOCAB_SYNTAX;
   }
@@ -348,11 +348,11 @@ encode(toke_encoder_z* self, const void* text, const size_t length, size_t* out_
 uint16_t*
 toke_encode(toke_encoder_z* self, const void* text, const size_t length, size_t* out_length)
 {
-  if (self->filter) {
+  if (self->normalizer) {
 
     size_t filtered_len = 0;
 
-    char* filtered = toke_filter(self->filter, (const char*)text, length, &filtered_len);
+    char* filtered = toke_normalize(self->normalizer, (const char*)text, length, &filtered_len);
     if (!filtered) {
       return NULL;
     }

@@ -10,6 +10,14 @@ extern "C"
 {
 #endif
 
+  enum toke_unicode_block
+  {
+    TOKE_UNICODE_BLOCK_BASIC_LATIN,
+    TOKE_UNICODE_BLOCK_GENERAL_PUNCTUATION
+  };
+
+  typedef enum toke_unicode_block toke_unicode_block_z;
+
   typedef struct toke_model toke_model_z;
 
   toke_model_z* toke_model_new();
@@ -19,6 +27,10 @@ extern "C"
   size_t toke_model_size(const toke_model_z* self);
 
   toke_error_z toke_model_add_token(toke_model_z* self, const uint8_t* data, size_t size);
+
+  toke_error_z toke_model_add_codepoint(toke_model_z* self, const uint32_t codepoint);
+
+  toke_error_z toke_model_add_unicode_block(toke_model_z* self, toke_unicode_block_z block);
 
   const uint8_t* toke_model_get_def(const toke_model_z* self, const size_t index);
 

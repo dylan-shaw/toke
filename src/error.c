@@ -16,6 +16,8 @@ toke_strerror(const toke_error_z err)
       return "vocab syntax error";
     case TOKE_ERROR_FILTER_SYNTAX:
       return "filter syntax error";
+    case TOKE_ERROR_INVALID_UNICODE:
+      return "invalid unicode";
   }
 
   return "unknown error";

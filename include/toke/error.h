@@ -12,7 +12,8 @@ extern "C"
     TOKE_ERROR_FILE_NOT_FOUND,
     TOKE_ERROR_FILE_IO,
     TOKE_ERROR_VOCAB_SYNTAX,
-    TOKE_ERROR_FILTER_SYNTAX
+    TOKE_ERROR_FILTER_SYNTAX,
+    TOKE_ERROR_INVALID_UNICODE
   };
 
   typedef enum toke_error toke_error_z;
